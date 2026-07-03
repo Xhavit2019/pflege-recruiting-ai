@@ -1,0 +1,18 @@
+import { Resend } from "resend";
+
+export const resend = new Resend(
+  process.env.RESEND_API_KEY
+);
+
+export async function sendEmail(
+  to: string,
+  subject: string,
+  html: string
+) {
+  return resend.emails.send({
+    from: "Test Pflege Recruiting AI <onboarding@resend.dev>",
+    to,
+    subject,
+    html,
+  });
+}
