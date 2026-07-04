@@ -105,6 +105,7 @@ model CandidateProfile {
   educations      Education[]
   workExperiences WorkExperience[]
   certificates    Certificate[]
+  languages       Language[]
 
   createdAt DateTime @default(now())
 }
@@ -171,6 +172,19 @@ model Certificate {
   certificateNumber String?
 
   description String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Language {
+  id String @id @default(cuid())
+
+  candidateProfileId String
+  candidateProfile   CandidateProfile @relation(fields: [candidateProfileId], references: [id], onDelete: Cascade)
+
+  language String
+  level    LanguageLevel
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

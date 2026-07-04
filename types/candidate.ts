@@ -69,5 +69,11 @@ export type CandidateProfileData = {
   certificateNumber?: string | null;
   description?: string | null;
   }[];
+
+  languages?: {
+  id: string;
+  language: string;
+  level: string;
+  }[];
   
 };

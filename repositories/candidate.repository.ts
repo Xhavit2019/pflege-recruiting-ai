@@ -28,6 +28,12 @@ export const CandidateRepository = {
           },
         },
 
+        languages: {
+          orderBy: {
+            createdAt: "desc",
+          },
+        },
+
         applications: {
           include: {
             job: {

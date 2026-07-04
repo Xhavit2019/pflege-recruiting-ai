@@ -10,6 +10,7 @@ import CvUploadCard from "@/components/candidate/profile/CvUploadCard";
 import EducationCard from "@/components/candidate/education/EducationCard";
 import WorkExperienceCard from "@/components/candidate/work/WorkExperienceCard";
 import CertificateCard from "@/components/candidate/certificates/CertificateCard";
+import LanguageCard from "@/components/candidate/languages/LanguageCard";
 
 export default async function Page({
   searchParams,
@@ -18,7 +19,8 @@ export default async function Page({
     editEducation?: string;
     editWorkExperience?: string;
     editCertificate?: string;
-}>;
+    editLanguage?: string;
+  }>;
 }) {
   const cookieStore = await cookies();
   const userId = cookieStore.get("userId")?.value;
@@ -33,6 +35,7 @@ export default async function Page({
   const editEducationId = params.editEducation;
   const editWorkExperienceId = params.editWorkExperience;
   const editCertificateId = params.editCertificate;
+  const editLanguageId = params.editLanguage;
 
   return (
     <div className="space-y-6">
@@ -45,10 +48,7 @@ export default async function Page({
 
       <ProfileImageCard profileImageUrl={profile?.profileImageUrl} />
 
-      <AiSummaryCard
-        summary={profile?.summary}
-        skills={profile?.skills}
-      />
+      <AiSummaryCard summary={profile?.summary} skills={profile?.skills} />
 
       <CvUploadCard cvUrl={profile?.cvUrl} />
 
@@ -67,6 +67,11 @@ export default async function Page({
       <CertificateCard
         certificates={profile?.certificates ?? []}
         editId={editCertificateId}
+      />
+
+      <LanguageCard
+        languages={profile?.languages ?? []}
+        editId={editLanguageId}
       />
     </div>
   );
