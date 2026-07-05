@@ -27,7 +27,7 @@ Analysiere diesen Bewerber für eine Pflege-Recruiting-Plattform.
 Aktuelle Profil-Daten:
 Beruf: ${profile.profession || "-"}
 Stadt: ${profile.city || "-"}
-Erfahrung: ${profile.experienceYears || 0} Jahre
+Erfahrung: ${profile.yearsOfExperience || 0} Jahre
 Skills: ${profile.skills.join(", ") || "-"}
 
 Gib eine kurze professionelle Zusammenfassung und 5 relevante Skills zurück.

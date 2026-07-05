@@ -1,14 +1,39 @@
+import { cookies } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import BackButton from "@/components/BackButton";
+import Card from "@/components/ui/Card";
+
 export default async function Page({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
+  const cookieStore = await cookies();
+  const userId = cookieStore.get("userId")?.value;
+
+  if (!userId) {
+    return <Card>Bitte zuerst einloggen.</Card>;
+  }
+
+  const company = await prisma.company.findUnique({
+    where: {
+      userId,
+    },
+  });
+
+  if (!company) {
+    return <Card>Kein Unternehmensprofil gefunden.</Card>;
+  }
+
   const { id } = await params;
 
-  const application = await prisma.application.findUnique({
-    where: { id },
+  const application = await prisma.application.findFirst({
+    where: {
+      id,
+      job: {
+        companyId: company.id,
+      },
+    },
     include: {
       candidate: {
         include: {
@@ -24,24 +49,24 @@ export default async function Page({
   });
 
   if (!application) {
-    return <div className="card">Bewerbung nicht gefunden.</div>;
+    return <Card>Bewerbung nicht gefunden oder kein Zugriff erlaubt.</Card>;
   }
 
   return (
     <div className="space-y-4">
       <BackButton />
 
-      <div className="card">
+      <Card>
         <h1 className="text-2xl font-bold">Bewerberdetails</h1>
 
-        <p><strong>Name:</strong> {application.candidate.user.name}</p>
+        <p><strong>Name:</strong> {application.candidate.user.name || "-"}</p>
         <p><strong>E-Mail:</strong> {application.candidate.user.email}</p>
         <p><strong>Beruf:</strong> {application.candidate.profession || "-"}</p>
         <p><strong>Stadt:</strong> {application.candidate.city || "-"}</p>
-        <p><strong>Erfahrung:</strong> {application.candidate.experienceYears || 0} Jahre</p>
+        <p><strong>Erfahrung:</strong> {application.candidate.yearsOfExperience || 0} Jahre</p>
         <p><strong>Status:</strong> {application.status}</p>
 
-        <div className="flex gap-2 flex-wrap mt-4">
+        <div className="mt-4 flex flex-wrap gap-2">
           {["reviewed", "accepted", "rejected"].map((status) => (
             <form key={status} method="POST" action="/api/applications/status">
               <input type="hidden" name="applicationId" value={application.id} />
@@ -51,34 +76,38 @@ export default async function Page({
                 {status === "reviewed"
                   ? "In Prüfung"
                   : status === "accepted"
-                  ? "Angenommen"
-                  : "Abgelehnt"}
+                    ? "Angenommen"
+                    : "Abgelehnt"}
               </button>
             </form>
           ))}
         </div>
-      </div>
+      </Card>
 
-      <div className="card">
+      <Card>
         <h2 className="text-xl font-bold">Stelle</h2>
         <p><strong>Titel:</strong> {application.job.title}</p>
         <p><strong>Firma:</strong> {application.job.company.companyName}</p>
         <p><strong>Ort:</strong> {application.job.city}</p>
-      </div>
+      </Card>
 
-      <div className="card">
+      <Card>
         <h2 className="text-xl font-bold">KI-Auswertung</h2>
         <p><strong>Match Score:</strong> {application.matchScore ?? "-"}%</p>
         <p>{application.aiSummary || "Noch keine KI-Auswertung vorhanden."}</p>
-      </div>
+      </Card>
 
       {application.candidate.cvUrl && (
-        <div className="card">
+        <Card>
           <h2 className="text-xl font-bold">Lebenslauf</h2>
-          <a className="btn inline-block" href={application.candidate.cvUrl} target="_blank">
+          <a
+            className="btn inline-block"
+            href={application.candidate.cvUrl}
+            target="_blank"
+          >
             PDF ansehen
           </a>
-        </div>
+        </Card>
       )}
     </div>
   );

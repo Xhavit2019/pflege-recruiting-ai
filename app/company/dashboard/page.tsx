@@ -1,3 +1,4 @@
+import { cookies } from "next/headers";
 import AppNav from "@/components/AppNav";
 import PageHeader from "@/components/layout/PageHeader";
 import Card from "@/components/ui/Card";
@@ -8,12 +9,56 @@ import EmptyState from "@/components/ui/EmptyState";
 import { prisma } from "@/lib/prisma";
 
 export default async function Page() {
-  const jobsCount = await prisma.job.count();
-  const applicationsCount = await prisma.application.count();
-  const candidatesCount = await prisma.candidateProfile.count();
+  const cookieStore = await cookies();
+  const userId = cookieStore.get("userId")?.value;
 
-  const applications = await prisma.application.findMany({
+  if (!userId) {
+    return <Card>Bitte zuerst einloggen.</Card>;
+  }
+
+  const company = await prisma.company.findUnique({
     where: {
+      userId,
+    },
+  });
+
+  if (!company) {
+    return <Card>Kein Unternehmensprofil gefunden.</Card>;
+  }
+
+  const jobsCount = await prisma.job.count({
+    where: {
+      companyId: company.id,
+    },
+  });
+
+  const applicationsCount = await prisma.application.count({
+    where: {
+      job: {
+        companyId: company.id,
+      },
+    },
+  });
+
+  const candidateApplications = await prisma.application.findMany({
+    where: {
+      job: {
+        companyId: company.id,
+      },
+    },
+    select: {
+      candidateId: true,
+    },
+    distinct: ["candidateId"],
+  });
+
+  const candidatesCount = candidateApplications.length;
+
+  const applicationsWithMatch = await prisma.application.findMany({
+    where: {
+      job: {
+        companyId: company.id,
+      },
       matchScore: {
         not: null,
       },
@@ -21,6 +66,11 @@ export default async function Page() {
   });
 
   const recentApplications = await prisma.application.findMany({
+    where: {
+      job: {
+        companyId: company.id,
+      },
+    },
     include: {
       candidate: {
         include: {
@@ -36,13 +86,12 @@ export default async function Page() {
   });
 
   const averageMatch =
-    applications.length > 0
+    applicationsWithMatch.length > 0
       ? Math.round(
-          applications.reduce(
-            (sum, application) =>
-              sum + (application.matchScore || 0),
+          applicationsWithMatch.reduce(
+            (sum, application) => sum + (application.matchScore || 0),
             0
-          ) / applications.length
+          ) / applicationsWithMatch.length
         )
       : 0;
 
@@ -52,18 +101,14 @@ export default async function Page() {
 
       <PageHeader
         title="Unternehmen Dashboard"
-        subtitle="Verwalten Sie Stellenanzeigen, Bewerbungen und KI-Matching."
-        actions={
-          <Button href="/company/jobs/new">
-            Neue Stelle erstellen
-          </Button>
-        }
+        subtitle={`Willkommen bei ${company.companyName}. Verwalten Sie Ihre Stellenanzeigen, Bewerbungen und KI-Matches.`}
+        actions={<Button href="/company/jobs/new">Neue Stelle erstellen</Button>}
       />
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <StatCard title="Stellenanzeigen" value={jobsCount} />
-        <StatCard title="Bewerbungen" value={applicationsCount} />
-        <StatCard title="Bewerber" value={candidatesCount} />
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+        <StatCard title="Eigene Stellenanzeigen" value={jobsCount} />
+        <StatCard title="Eigene Bewerbungen" value={applicationsCount} />
+        <StatCard title="Bewerber auf Ihre Stellen" value={candidatesCount} />
         <StatCard title="Ø Match Score" value={`${averageMatch}%`} />
       </div>
 
@@ -73,9 +118,7 @@ export default async function Page() {
             Neueste Bewerbungen
           </h2>
 
-          <Button href="/company/applications">
-            Alle ansehen
-          </Button>
+          <Button href="/company/applications">Alle ansehen</Button>
         </div>
 
         {recentApplications.length === 0 ? (
@@ -89,41 +132,62 @@ export default async function Page() {
           <div className="space-y-3">
             {recentApplications.map((application) => (
               <div
-                key={application.id}
-                className="rounded-xl border border-slate-200 p-4"
-              >
-                <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-                  <div>
-                    <p className="font-semibold text-slate-900">
-                      {application.job.title}
-                    </p>
+  key={application.id}
+  className="rounded-xl border border-slate-200 p-4"
+>
+  <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+    <div>
+      <p className="font-semibold text-slate-900">
+        {application.job.title}
+      </p>
 
-                    <p className="text-sm text-slate-600">
-                      Bewerber: {application.candidate.user.email}
-                    </p>
-                  </div>
+      <p className="text-sm text-slate-600">
+        Bewerber:{" "}
+        {application.candidate.user.name ||
+          application.candidate.user.email}
+      </p>
 
-                  <Badge
-                    variant={
-                      application.status === "accepted"
-                        ? "success"
-                        : application.status === "rejected"
-                        ? "danger"
-                        : application.status === "reviewed"
-                        ? "warning"
-                        : "default"
-                    }
-                  >
-                    {application.status}
-                  </Badge>
-                </div>
+      <p className="mt-1 text-sm text-slate-500">
+        Eingegangen am{" "}
+        {new Date(application.createdAt).toLocaleDateString("de-DE")} um{" "}
+        {new Date(application.createdAt).toLocaleTimeString("de-DE", {
+          hour: "2-digit",
+          minute: "2-digit",
+        })}{" "}
+        Uhr
+      </p>
+    </div>
 
-                {application.matchScore !== null && (
-                  <p className="mt-2 text-sm text-slate-600">
-                    Match: {application.matchScore}%
-                  </p>
-                )}
-              </div>
+    <div className="flex flex-col gap-2 md:items-end">
+      <Badge
+        variant={
+          application.status === "accepted"
+            ? "success"
+            : application.status === "rejected"
+              ? "danger"
+              : application.status === "reviewed"
+                ? "warning"
+                : "default"
+        }
+      >
+        {application.status}
+      </Badge>
+
+      <a
+        href={`/company/applications/${application.id}`}
+        className="btn inline-block"
+      >
+        Details ansehen
+      </a>
+    </div>
+  </div>
+
+  {application.matchScore !== null && (
+    <p className="mt-2 text-sm text-slate-600">
+      Match: {application.matchScore}%
+    </p>
+  )}
+</div>
             ))}
           </div>
         )}
