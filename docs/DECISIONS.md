@@ -1,3 +1,20 @@
+## Entscheidung – 06.07.2026
+
+Die Plattform verwendet zukünftig konsequent eine rollenbasierte Rechteverwaltung (RBAC).
+
+Rollen:
+
+- Administrator
+- Unternehmen
+- Bewerber
+
+Regeln:
+
+- Administrator sieht alle Daten.
+- Unternehmen sieht ausschließlich eigene Daten.
+- Bewerber sieht ausschließlich eigene Daten.
+- APIs prüfen Berechtigungen serverseitig.
+- UI und API müssen dieselben Berechtigungen verwenden.
 # Architecture Decisions
 
 ## ADR-001

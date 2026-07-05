@@ -1,3 +1,27 @@
+# Changelog
+
+## 2026-07-06
+
+### Added
+- Role-Based Access Control (RBAC) für Unternehmen und Administratoren
+- Such-, Filter- und Sortierfunktionen für Admin Jobs
+- Such-, Filter- und Sortierfunktionen für Admin Users
+- Such-, Filter- und Sortierfunktionen für Admin Applications
+- Such-, Filter- und Sortierfunktionen für Company Applications
+
+### Improved
+- Company Dashboard zeigt nur eigene Daten
+- Company Jobs zeigen nur eigene Stellenanzeigen
+- Company Applications zeigen nur Bewerbungen auf eigene Stellen
+- Bewerbungsdetailseite gegen Fremdzugriff abgesichert
+- Modernisiertes UI mit Mint-/Petrol-Farbschema
+- Verbesserte Buttons, Cards und Formulare
+
+### Security
+- Admin APIs abgesichert
+- Company APIs abgesichert
+- Rollenprüfung für Statusänderungen
+- Rollenprüfung für KI-Matching
 ## Version 0.2.1
 
 ### Hinzugefügt

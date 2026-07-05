@@ -1,72 +1,36 @@
-# NextTech RecruitAI
+# Projektstatus
 
-## Version
+## Stand
 
-0.2.1
+RecruitAI befindet sich jetzt in der ersten professionellen Entwicklungsphase.
 
----
+### Fertig
 
-# Aktueller Meilenstein
+- Authentifizierung
+- Registrierung
+- Bewerberbereich
+- Unternehmensbereich
+- Administratorbereich
+- Jobverwaltung
+- Bewerbungsverwaltung
+- Seed-System
+- RBAC (Role-Based Access Control)
+- Admin Filter & Suche
+- Company Filter & Suche
+- Erste UI Modernisierung
 
-## Milestone 1
-Foundation & Candidate Core
+### In Arbeit
 
-Status: 95 %
+- Zentrale Auth Services
+- DSGVO / AI-Consent
+- KI Matching
+- CV Analyse
 
----
+### Nächste Meilensteine
 
-# Abgeschlossen
-
-## Architektur
-
-- Next.js 16
-- Prisma ORM
-- PostgreSQL
-- Repository Pattern
-- Service Layer
-- Master Data
-- TypeScript
-
-## Candidate Center
-
-- Candidate Dashboard
-- Candidate Profile
-- Profile Completion Service
-- Profilbild Upload
-- CV Upload
-- KI-Auswertung
-- Candidate Profile Form
-- Refaktorierung in Komponenten
-
-## Dokumentation
-
-- docs eingerichtet
-- Projektstatus
-- Changelog
-- Architektur
-- Roadmap
-
----
-
-# Aktuelle Komponenten
-
-components/candidate/
-
-- ProfileImageCard
-- CandidateProfileForm
-- CvUploadCard
-- AiSummaryCard
-
----
-
-# Nächster Sprint
-
-Milestone 2
-
-Candidate Center Professional
-
-- Ausbildung
-- Berufserfahrung
-- Zertifikate
-- Mehrsprachigkeit
-- Profilvorschau
+1. Auth Core
+2. Candidate Optimierung
+3. Company Profil
+4. DSGVO Consent
+5. AI Command Center
+6. Erste Pilotkunden

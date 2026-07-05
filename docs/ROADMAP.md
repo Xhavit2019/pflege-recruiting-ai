@@ -1,54 +1,29 @@
-# Roadmap
+# Phase 2
 
-## Milestone 1
-Foundation & Candidate Core
+## Sicherheit
 
-Status: 95 %
+- Zentrale Berechtigungen
+- API Security
+- Audit Logs
+- Consent Management
 
-Fast abgeschlossen
+## KI
 
-Letzte Arbeiten:
+- GPT Matching
+- Lebenslauf Analyse
+- Skill Extraktion
+- Unternehmensranking
 
-- Candidate Professional
-- Git Flow
-- Abschlussdokumentation
+## Unternehmen
 
-## Milestone 2
-Candidate Center Professional
+- Firmenprofil
+- Bewerberverwaltung
+- Nachrichten
+- Interviews
 
-- Profilbild
-- Ausbildung
-- Zertifikate
-- Mehrsprachigkeit
-- Berufserfahrung
-- Profilvorschau
+## Bewerber
 
----
-
-## Milestone 3
-Company Center
-
-- Unternehmensprofil
-- Jobs verwalten
-- Bewerberübersicht
-- Recruiting Pipeline
-
----
-
-## Milestone 4
-RecruitAI
-
-- CV Analyse
-- KI Matching
-- Skill Matching
-- Interview Analyse
-
----
-
-## Milestone 5
-Communication Hub
-
-- Chat
-- WhatsApp
-- Video Interview
-- E-Mail
+- CV Upload
+- KI Optimierung
+- Bewerbungsstatus
+- Job Empfehlungen
