@@ -1,19 +1,13 @@
-import { cookies } from "next/headers";
 import AppNav from "@/components/AppNav";
 import PageHeader from "@/components/layout/PageHeader";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import StatCard from "@/components/ui/StatCard";
-import { CandidateService } from "@/services/candidate.service";
 import { ProfileCompletionService } from "@/services/profile-completion.service";
+import { requireCandidate } from "@/lib/auth/require-candidate";
 
 export default async function Page() {
-  const cookieStore = await cookies();
-  const userId = cookieStore.get("userId")?.value;
-
-  const profile = userId
-    ? await CandidateService.getProfile(userId)
-    : null;
+  const profile = await requireCandidate();
 
   const completion = ProfileCompletionService.calculate(profile);
 
@@ -26,7 +20,7 @@ export default async function Page() {
         subtitle="Ihr persönliches Candidate Center für Profil, Bewerbungen und passende Stellen."
       />
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
         <StatCard
           title="Profilstatus"
           value={`${completion.percentage}%`}
@@ -34,7 +28,7 @@ export default async function Page() {
         />
         <StatCard
           title="Bewerbungen"
-          value={profile?.applications.length ?? 0}
+          value={profile.applications.length}
           description="Aktive Bewerbungen"
         />
         <StatCard
@@ -44,7 +38,7 @@ export default async function Page() {
         />
         <StatCard
           title="Deutschlevel"
-          value={profile?.germanLevel ?? "-"}
+          value={profile.germanLevel ?? "-"}
           description="Aktuelles Sprachniveau"
         />
       </div>
@@ -56,7 +50,7 @@ export default async function Page() {
 
         <div className="mt-4 h-3 w-full rounded-full bg-slate-200">
           <div
-            className="h-3 rounded-full bg-slate-900"
+            className="h-3 rounded-full bg-teal-600"
             style={{ width: `${completion.percentage}%` }}
           />
         </div>
@@ -66,7 +60,7 @@ export default async function Page() {
         </p>
       </Card>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <Card>
           <h2 className="text-xl font-bold text-slate-900">Mein Profil</h2>
           <p className="mt-2 text-slate-600">

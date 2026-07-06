@@ -1,8 +1,7 @@
-import { cookies } from "next/headers";
 import AppNav from "@/components/AppNav";
 import PageHeader from "@/components/layout/PageHeader";
 import Card from "@/components/ui/Card";
-import { CandidateService } from "@/services/candidate.service";
+import { requireCandidate } from "@/lib/auth/require-candidate";
 import ProfileImageCard from "@/components/candidate/profile/ProfileImageCard";
 import AiSummaryCard from "@/components/candidate/profile/AiSummaryCard";
 import CandidateProfileForm from "@/components/candidate/profile/CandidateProfileForm";
@@ -22,20 +21,9 @@ export default async function Page({
     editLanguage?: string;
   }>;
 }) {
-  const cookieStore = await cookies();
-  const userId = cookieStore.get("userId")?.value;
-
-  if (!userId) {
-    return <Card>Bitte zuerst einloggen.</Card>;
-  }
-
-  const profile = await CandidateService.getProfile(userId);
+  const profile = await requireCandidate();
 
   const params = await searchParams;
-  const editEducationId = params.editEducation;
-  const editWorkExperienceId = params.editWorkExperience;
-  const editCertificateId = params.editCertificate;
-  const editLanguageId = params.editLanguage;
 
   return (
     <div className="space-y-6">
@@ -46,32 +34,37 @@ export default async function Page({
         subtitle="Pflegen Sie Ihre beruflichen Daten, Sprache, Mobilität und Verfügbarkeit."
       />
 
-      <ProfileImageCard profileImageUrl={profile?.profileImageUrl} />
+      <ProfileImageCard profileImageUrl={profile.profileImageUrl} />
 
-      <AiSummaryCard summary={profile?.summary} skills={profile?.skills} />
+      <AiSummaryCard
+        summary={profile.summary}
+        skills={profile.skills}
+      />
 
-      <CvUploadCard cvUrl={profile?.cvUrl} />
+      <CvUploadCard
+        cvUrl={profile.cvUrl}
+      />
 
       <CandidateProfileForm profile={profile} />
 
       <EducationCard
-        educations={profile?.educations ?? []}
-        editId={editEducationId}
+        educations={profile.educations}
+        editId={params.editEducation}
       />
 
       <WorkExperienceCard
-        workExperiences={profile?.workExperiences ?? []}
-        editId={editWorkExperienceId}
+        workExperiences={profile.workExperiences}
+        editId={params.editWorkExperience}
       />
 
       <CertificateCard
-        certificates={profile?.certificates ?? []}
-        editId={editCertificateId}
+        certificates={profile.certificates}
+        editId={params.editCertificate}
       />
 
       <LanguageCard
-        languages={profile?.languages ?? []}
-        editId={editLanguageId}
+        languages={profile.languages}
+        editId={params.editLanguage}
       />
     </div>
   );

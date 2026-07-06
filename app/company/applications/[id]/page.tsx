@@ -1,29 +1,14 @@
-import { cookies } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import BackButton from "@/components/BackButton";
 import Card from "@/components/ui/Card";
+import { requireCompany } from "@/lib/auth/require-company";
 
 export default async function Page({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const cookieStore = await cookies();
-  const userId = cookieStore.get("userId")?.value;
-
-  if (!userId) {
-    return <Card>Bitte zuerst einloggen.</Card>;
-  }
-
-  const company = await prisma.company.findUnique({
-    where: {
-      userId,
-    },
-  });
-
-  if (!company) {
-    return <Card>Kein Unternehmensprofil gefunden.</Card>;
-  }
+  const company = await requireCompany();
 
   const { id } = await params;
 
@@ -65,6 +50,15 @@ export default async function Page({
         <p><strong>Stadt:</strong> {application.candidate.city || "-"}</p>
         <p><strong>Erfahrung:</strong> {application.candidate.yearsOfExperience || 0} Jahre</p>
         <p><strong>Status:</strong> {application.status}</p>
+        <p>
+          <strong>Eingegangen:</strong>{" "}
+          {new Date(application.createdAt).toLocaleDateString("de-DE")} um{" "}
+          {new Date(application.createdAt).toLocaleTimeString("de-DE", {
+            hour: "2-digit",
+            minute: "2-digit",
+          })}{" "}
+          Uhr
+        </p>
 
         <div className="mt-4 flex flex-wrap gap-2">
           {["reviewed", "accepted", "rejected"].map((status) => (

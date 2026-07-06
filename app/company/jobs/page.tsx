@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { cookies } from "next/headers";
 import AppNav from "@/components/AppNav";
 import PageHeader from "@/components/layout/PageHeader";
 import Card from "@/components/ui/Card";
@@ -7,24 +6,10 @@ import Button from "@/components/ui/Button";
 import Badge from "@/components/ui/Badge";
 import EmptyState from "@/components/ui/EmptyState";
 import { prisma } from "@/lib/prisma";
+import { requireCompany } from "@/lib/auth/require-company";
 
 export default async function Page() {
-  const cookieStore = await cookies();
-  const userId = cookieStore.get("userId")?.value;
-
-  if (!userId) {
-    return <Card>Bitte zuerst einloggen.</Card>;
-  }
-
-  const company = await prisma.company.findUnique({
-    where: {
-      userId,
-    },
-  });
-
-  if (!company) {
-    return <Card>Kein Unternehmensprofil gefunden.</Card>;
-  }
+  const company = await requireCompany();
 
   const jobs = await prisma.job.findMany({
     where: {
