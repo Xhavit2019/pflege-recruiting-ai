@@ -1,47 +1,79 @@
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { NextResponse } from "next/server";
-
-const prisma = new PrismaClient();
 
 export async function POST(req: Request) {
   try {
     const formData = await req.formData();
 
-    const name = formData.get("name") as string;
-    const email = formData.get("email") as string;
-    const password = formData.get("password") as string;
-    const role = formData.get("role") as string;
+    const name = formData.get("name")?.toString().trim() || "";
+    const email = formData.get("email")?.toString().trim().toLowerCase() || "";
+    const password = formData.get("password")?.toString() || "";
+    const role = formData.get("role")?.toString() as
+      | "candidate"
+      | "company"
+      | "admin";
+
+    if (!name || !email || !password || !role) {
+      return NextResponse.redirect(
+        new URL("/register?error=missingFields", req.url),
+        303
+      );
+    }
 
     const existingUser = await prisma.user.findUnique({
       where: { email },
     });
 
     if (existingUser) {
-      return NextResponse.json(
-        { error: "Benutzer existiert bereits" },
-        { status: 400 }
+      return NextResponse.redirect(
+        new URL("/register?error=userExists", req.url),
+        303
       );
     }
 
     const passwordHash = await bcrypt.hash(password, 10);
 
-    await prisma.user.create({
+    const user = await prisma.user.create({
       data: {
         name,
         email,
         passwordHash,
-        role: role as any,
+        role,
       },
     });
 
-    return NextResponse.redirect(new URL("/login", req.url));
+    if (role === "candidate") {
+      await prisma.candidateProfile.create({
+        data: {
+          userId: user.id,
+        },
+      });
+    }
+
+    if (role === "company") {
+      await prisma.company.create({
+        data: {
+          userId: user.id,
+          companyName: name,
+          city: "",
+          phone: "",
+          website: "",
+          description: "",
+          facilityType: "other",
+          industry: "care",
+          isVerified: false,
+        },
+      });
+    }
+
+    return NextResponse.redirect(new URL("/login?registered=1", req.url), 303);
   } catch (error) {
     console.error(error);
 
-    return NextResponse.json(
-      { error: "Registrierung fehlgeschlagen" },
-      { status: 500 }
+    return NextResponse.redirect(
+      new URL("/register?error=failed", req.url),
+      303
     );
   }
 }

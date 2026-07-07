@@ -6,17 +6,24 @@ export async function POST(req: Request) {
   try {
     const formData = await req.formData();
 
-    const email = formData.get("email") as string;
-    const password = formData.get("password") as string;
+    const email = formData.get("email")?.toString().trim().toLowerCase() || "";
+    const password = formData.get("password")?.toString() || "";
+
+    if (!email || !password) {
+      return NextResponse.redirect(
+        new URL("/login?error=missingFields", req.url),
+        303
+      );
+    }
 
     const user = await prisma.user.findUnique({
       where: { email },
     });
 
     if (!user) {
-      return NextResponse.json(
-        { error: "Benutzer nicht gefunden" },
-        { status: 404 }
+      return NextResponse.redirect(
+        new URL("/login?error=userNotFound", req.url),
+        303
       );
     }
 
@@ -26,9 +33,9 @@ export async function POST(req: Request) {
     );
 
     if (!validPassword) {
-      return NextResponse.json(
-        { error: "Falsches Passwort" },
-        { status: 401 }
+      return NextResponse.redirect(
+        new URL("/login?error=wrongPassword", req.url),
+        303
       );
     }
 
@@ -36,13 +43,10 @@ export async function POST(req: Request) {
       user.role === "admin"
         ? "/admin/dashboard"
         : user.role === "company"
-        ? "/company/dashboard"
-        : "/candidate/dashboard";
+          ? "/company/dashboard"
+          : "/candidate/dashboard";
 
-    const response = NextResponse.redirect(
-      new URL(redirectUrl, req.url),
-      303
-    );
+    const response = NextResponse.redirect(new URL(redirectUrl, req.url), 303);
 
     response.cookies.set("userId", user.id, {
       httpOnly: true,
@@ -60,9 +64,9 @@ export async function POST(req: Request) {
   } catch (error) {
     console.error(error);
 
-    return NextResponse.json(
-      { error: "Login fehlgeschlagen" },
-      { status: 500 }
+    return NextResponse.redirect(
+      new URL("/login?error=failed", req.url),
+      303
     );
   }
 }
