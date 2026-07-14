@@ -6,6 +6,13 @@ export type CandidateProfileData = {
   id: string;
   userId: string;
 
+  firstName?: string | null;
+  lastName?: string | null;
+  address?: string | null;
+  postalCode?: string | null;
+  birthDate?: Date | null;
+  nationality?: string | null;
+
   phone?: string | null;
   city?: string | null;
   profession?: string | null;
@@ -13,6 +20,9 @@ export type CandidateProfileData = {
   skills: string[];
 
   cvUrl?: string | null;
+  cvFileName?: string | null;
+  cvUploadedAt?: Date | null;
+
   profileImageUrl?: string | null;
   summary?: string | null;
 
@@ -22,13 +32,15 @@ export type CandidateProfileData = {
   availableFrom?: Date | null;
   yearsOfExperience?: number | null;
 
-  driverLicenseCategory: CandidateProfilePayload["driverLicenseCategory"];
+  driverLicenseCategory:
+    CandidateProfilePayload["driverLicenseCategory"];
 
   hasCar: boolean;
   willingToRelocate: boolean;
   willingToTravel: boolean;
 
-  preferredIndustry?: CandidateProfilePayload["preferredIndustry"];
+  preferredIndustry?:
+    CandidateProfilePayload["preferredIndustry"];
 
   expectedEmploymentType?: string | null;
 
@@ -49,31 +61,30 @@ export type CandidateProfileData = {
   }[];
 
   workExperiences?: {
-  id: string;
-  company: string;
-  position: string;
-  city?: string | null;
-  country?: string | null;
-  startDate?: Date | null;
-  endDate?: Date | null;
-  currentlyWorking: boolean;
-  description?: string | null;
+    id: string;
+    company: string;
+    position: string;
+    city?: string | null;
+    country?: string | null;
+    startDate?: Date | null;
+    endDate?: Date | null;
+    currentlyWorking: boolean;
+    description?: string | null;
   }[];
 
   certificates?: {
-  id: string;
-  title: string;
-  issuer: string;
-  issueDate?: Date | null;
-  expiryDate?: Date | null;
-  certificateNumber?: string | null;
-  description?: string | null;
+    id: string;
+    title: string;
+    issuer: string;
+    issueDate?: Date | null;
+    expiryDate?: Date | null;
+    certificateNumber?: string | null;
+    description?: string | null;
   }[];
 
   languages?: {
-  id: string;
-  language: string;
-  level: string;
+    id: string;
+    language: string;
+    level: string;
   }[];
-  
 };

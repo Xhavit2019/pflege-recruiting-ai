@@ -1,84 +1,177 @@
-import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
-import TextField from "@/components/form/TextField";
+import Card from "@/components/ui/Card";
 import SelectField from "@/components/form/SelectField";
-import { languageLevels } from "@/master-data/language-levels";
-import { industries } from "@/master-data/industries";
-import { employmentTypes } from "@/master-data/employment-types";
+import TextField from "@/components/form/TextField";
+
 import { driverLicenseCategories } from "@/master-data/driver-license-categories";
+import { employmentTypes } from "@/master-data/employment-types";
+import { industries } from "@/master-data/industries";
+import { languageLevels } from "@/master-data/language-levels";
+
 import type { CandidateProfileData } from "@/types/candidate";
 
 type CandidateProfileFormProps = {
   profile: CandidateProfileData | null;
 };
 
+function formatDateForInput(value?: Date | string | null) {
+  if (!value) {
+    return "";
+  }
+
+  const date = value instanceof Date ? value : new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
+
+  return date.toISOString().slice(0, 10);
+}
+
 export default function CandidateProfileForm({
   profile,
 }: CandidateProfileFormProps) {
   return (
     <Card>
-      <form method="POST" action="/api/candidate/profile" className="space-y-6">
-        <div className="grid gap-4 md:grid-cols-2">
-          <TextField label="Telefon" name="phone" defaultValue={profile?.phone} />
+      <form
+        method="POST"
+        action="/api/candidate/profile"
+        className="space-y-8"
+      >
+        <section className="space-y-4">
+          <div>
+            <h2 className="text-lg font-semibold text-slate-900">
+              Persönliche Daten
+            </h2>
 
-          <TextField label="Stadt" name="city" defaultValue={profile?.city} />
+            <p className="text-sm text-slate-600">
+              Ergänzen Sie Ihre persönlichen Kontaktdaten.
+            </p>
+          </div>
 
-          <TextField
-            label="Beruf"
-            name="profession"
-            defaultValue={profile?.profession}
-            placeholder="z. B. Pflegefachkraft"
-          />
+          <div className="grid gap-4 md:grid-cols-2">
+            <TextField
+              label="Vorname"
+              name="firstName"
+              defaultValue={profile?.firstName}
+            />
 
-          <TextField
-            label="Berufserfahrung in Jahren"
-            name="yearsOfExperience"
-            type="number"
-            defaultValue={profile?.yearsOfExperience}
-          />
+            <TextField
+              label="Nachname"
+              name="lastName"
+              defaultValue={profile?.lastName}
+            />
 
-          <SelectField
-            label="Deutschkenntnisse"
-            name="germanLevel"
-            options={[...languageLevels]}
-            defaultValue={profile?.germanLevel}
-          />
+            <TextField
+              label="Geburtsdatum"
+              name="birthDate"
+              type="date"
+              defaultValue={formatDateForInput(profile?.birthDate)}
+            />
 
-          <SelectField
-            label="Gewünschte Branche"
-            name="preferredIndustry"
-            options={[...industries]}
-            defaultValue={profile?.preferredIndustry}
-          />
+            <TextField
+              label="Nationalität"
+              name="nationality"
+              defaultValue={profile?.nationality}
+            />
 
-          <SelectField
-            label="Gewünschte Arbeitsform"
-            name="expectedEmploymentType"
-            options={[...employmentTypes]}
-            defaultValue={profile?.expectedEmploymentType}
-          />
+            <TextField
+              label="Adresse"
+              name="address"
+              defaultValue={profile?.address}
+            />
 
-          <SelectField
-            label="Führerschein"
-            name="driverLicenseCategory"
-            options={[...driverLicenseCategories]}
-            defaultValue={profile?.driverLicenseCategory}
-          />
+            <TextField
+              label="Postleitzahl"
+              name="postalCode"
+              defaultValue={profile?.postalCode}
+            />
 
-          <TextField
-            label="Gehaltsvorstellung"
-            name="desiredSalary"
-            type="number"
-            defaultValue={profile?.desiredSalary}
-          />
+            <TextField
+              label="Stadt"
+              name="city"
+              defaultValue={profile?.city}
+            />
 
-          <TextField
-            label="Skills"
-            name="skills"
-            defaultValue={profile?.skills?.join(", ")}
-            placeholder="z. B. Wundversorgung, Altenpflege"
-          />
-        </div>
+            <TextField
+              label="Telefon"
+              name="phone"
+              type="tel"
+              defaultValue={profile?.phone}
+            />
+          </div>
+        </section>
+
+        <section className="space-y-4">
+          <div>
+            <h2 className="text-lg font-semibold text-slate-900">
+              Berufliches Profil
+            </h2>
+
+            <p className="text-sm text-slate-600">
+              Diese Angaben helfen Unternehmen, Ihr Profil besser
+              einzuordnen.
+            </p>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <TextField
+              label="Beruf"
+              name="profession"
+              defaultValue={profile?.profession}
+              placeholder="z. B. Pflegefachkraft"
+            />
+
+            <TextField
+              label="Berufserfahrung in Jahren"
+              name="yearsOfExperience"
+              type="number"
+              defaultValue={profile?.yearsOfExperience}
+            />
+
+            <SelectField
+              label="Deutschkenntnisse"
+              name="germanLevel"
+              options={[...languageLevels]}
+              defaultValue={profile?.germanLevel}
+            />
+
+            <SelectField
+              label="Gewünschte Branche"
+              name="preferredIndustry"
+              options={[...industries]}
+              defaultValue={profile?.preferredIndustry}
+            />
+
+            <SelectField
+              label="Gewünschte Arbeitsform"
+              name="expectedEmploymentType"
+              options={[...employmentTypes]}
+              defaultValue={profile?.expectedEmploymentType}
+            />
+
+            <SelectField
+              label="Führerschein"
+              name="driverLicenseCategory"
+              options={[...driverLicenseCategories]}
+              defaultValue={profile?.driverLicenseCategory}
+            />
+
+            <TextField
+              label="Gehaltsvorstellung"
+              name="desiredSalary"
+              type="number"
+              defaultValue={profile?.desiredSalary}
+            />
+
+            <TextField
+              label="Kenntnisse und Fähigkeiten"
+              name="skills"
+              defaultValue={profile?.skills?.join(", ")}
+              placeholder="z. B. Wundversorgung, Altenpflege"
+            />
+          </div>
+        </section>
 
         <Button type="submit">Profil speichern</Button>
       </form>

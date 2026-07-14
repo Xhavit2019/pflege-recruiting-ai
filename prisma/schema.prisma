@@ -88,12 +88,19 @@ model CandidateProfile {
   id     String @id @default(cuid())
   userId String @unique
   user   User   @relation(fields: [userId], references: [id])
-
+  firstName   String?
+  lastName    String?
+  address     String?
+  postalCode  String?
+  birthDate   DateTime?
+  nationality String?
   phone                 String?
   city                  String?
   profession            String?
   skills                String[]
   cvUrl                 String?
+  cvFileName     String?
+  cvUploadedAt   DateTime?
   summary               String?
   profileImageUrl       String?
   germanLevel           LanguageLevel?
