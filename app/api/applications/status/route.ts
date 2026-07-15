@@ -1,6 +1,6 @@
-import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
+import { getCurrentUser } from "@/lib/auth/current-user";
 import { sendEmail } from "@/lib/mail";
 import { prisma } from "@/lib/prisma";
 
@@ -13,14 +13,20 @@ const allowedStatuses = [
 
 type ApplicationStatus = (typeof allowedStatuses)[number];
 
+function escapeHtml(value: string | null | undefined) {
+  return (value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
 export async function POST(req: Request) {
   try {
-    const cookieStore = await cookies();
+    const currentUser = await getCurrentUser();
 
-    const userId = cookieStore.get("userId")?.value;
-    const role = cookieStore.get("role")?.value;
-
-    if (!userId) {
+    if (!currentUser) {
       return NextResponse.json(
         { error: "Nicht eingeloggt." },
         { status: 401 }
@@ -31,7 +37,8 @@ export async function POST(req: Request) {
 
     const applicationId = formData
       .get("applicationId")
-      ?.toString();
+      ?.toString()
+      .trim();
 
     const status = formData
       .get("status")
@@ -51,7 +58,8 @@ export async function POST(req: Request) {
       where: {
         id: applicationId,
       },
-      include: {
+      select: {
+        id: true,
         job: {
           select: {
             companyId: true,
@@ -67,10 +75,10 @@ export async function POST(req: Request) {
       );
     }
 
-    if (role === "company") {
+    if (currentUser.role === "company") {
       const company = await prisma.company.findUnique({
         where: {
-          userId,
+          userId: currentUser.id,
         },
         select: {
           id: true,
@@ -86,7 +94,7 @@ export async function POST(req: Request) {
           { status: 403 }
         );
       }
-    } else if (role !== "admin") {
+    } else if (currentUser.role !== "admin") {
       return NextResponse.json(
         { error: "Keine Berechtigung." },
         { status: 403 }
@@ -124,11 +132,6 @@ export async function POST(req: Request) {
             ? "abgelehnt"
             : "offen";
 
-    /*
-     * Die Statusänderung wurde bereits erfolgreich gespeichert.
-     * Ein Fehler beim E-Mail-Versand darf deshalb nicht den
-     * gesamten Vorgang mit einem 500-Fehler abbrechen.
-     */
     try {
       await sendEmail(
         updatedApplication.candidate.user.email,
@@ -142,21 +145,28 @@ export async function POST(req: Request) {
             <p>
               Hallo${
                 updatedApplication.candidate.user.name
-                  ? ` ${updatedApplication.candidate.user.name}`
+                  ? ` ${escapeHtml(
+                      updatedApplication.candidate.user.name
+                    )}`
                   : ""
               },
             </p>
 
             <p>
               Ihre Bewerbung für die Stelle
-              <strong>${updatedApplication.job.title}</strong>
+              <strong>${escapeHtml(
+                updatedApplication.job.title
+              )}</strong>
               bei
-              <strong>${updatedApplication.job.company.companyName}</strong>
+              <strong>${escapeHtml(
+                updatedApplication.job.company.companyName
+              )}</strong>
               wurde aktualisiert.
             </p>
 
             <p>
-              <strong>Neuer Status:</strong> ${statusText}
+              <strong>Neuer Status:</strong>
+              ${escapeHtml(statusText)}
             </p>
 
             <p>
@@ -174,7 +184,7 @@ export async function POST(req: Request) {
     }
 
     const redirectPath =
-      role === "admin"
+      currentUser.role === "admin"
         ? "/admin/applications?statusUpdated=1"
         : "/company/applications?statusUpdated=1";
 
