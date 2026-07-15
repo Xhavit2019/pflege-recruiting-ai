@@ -1,74 +1,182 @@
-import { prisma } from "@/lib/prisma";
-import { sendEmail } from "@/lib/mail";
 import { NextResponse } from "next/server";
 
+import { requireCandidate } from "@/lib/auth/require-candidate";
+import { sendEmail } from "@/lib/mail";
+import { prisma } from "@/lib/prisma";
+
+function escapeHtml(value: string | null | undefined) {
+  return (value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
 export async function POST(req: Request) {
-  const formData = await req.formData();
-  const jobId = formData.get("jobId") as string;
+  // Nur ein tatsächlich angemeldeter Bewerber darf sich bewerben.
+  const authenticatedCandidate = await requireCandidate();
 
-  let candidate = await prisma.candidateProfile.findFirst({
-    include: { user: true },
-  });
+  try {
+    const formData = await req.formData();
+    const jobId = formData.get("jobId")?.toString().trim();
 
-  if (!candidate) {
-    const user = await prisma.user.findFirst({
-      where: { role: "candidate" },
-    });
-
-    if (!user) {
+    if (!jobId) {
       return NextResponse.json(
-        { error: "Bitte zuerst als Bewerber registrieren." },
+        { error: "Die Stellen-ID fehlt." },
         { status: 400 }
       );
     }
 
-    candidate = await prisma.candidateProfile.create({
-      data: {
-        userId: user.id,
-        profession: "Pflegekraft",
-        skills: [],
+    const candidate = await prisma.candidateProfile.findUnique({
+      where: {
+        id: authenticatedCandidate.id,
       },
-      include: { user: true },
+      include: {
+        user: true,
+      },
     });
-  }
 
-  const application = await prisma.application.create({
-    data: {
-      jobId,
-      candidateId: candidate.id,
-      status: "pending",
-    },
-    include: {
-      job: {
-        include: {
-          company: {
-            include: {
-              user: true,
+    if (!candidate) {
+      return NextResponse.json(
+        { error: "Das Bewerberprofil wurde nicht gefunden." },
+        { status: 404 }
+      );
+    }
+
+    const job = await prisma.job.findUnique({
+      where: {
+        id: jobId,
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    if (!job) {
+      return NextResponse.json(
+        { error: "Die Stelle wurde nicht gefunden." },
+        { status: 404 }
+      );
+    }
+
+    // Doppelte Bewerbung verhindern.
+    const existingApplication =
+      await prisma.application.findFirst({
+        where: {
+          jobId,
+          candidateId: candidate.id,
+        },
+        select: {
+          id: true,
+        },
+      });
+
+    if (existingApplication) {
+      return NextResponse.redirect(
+        new URL(
+          "/candidate/applications?alreadyApplied=1",
+          req.url
+        ),
+        303
+      );
+    }
+
+    const application = await prisma.application.create({
+      data: {
+        jobId,
+        candidateId: candidate.id,
+        status: "pending",
+      },
+      include: {
+        job: {
+          include: {
+            company: {
+              include: {
+                user: true,
+              },
             },
           },
         },
       },
-    },
-  });
+    });
 
-  const companyEmail = application.job.company.user.email;
+    /*
+     * Die Bewerbung wurde bereits erfolgreich gespeichert.
+     * Ein Fehler beim E-Mail-Versand darf den Hauptvorgang
+     * nicht mehr mit einem 500-Fehler abbrechen.
+     */
+    try {
+      await sendEmail(
+        application.job.company.user.email,
+        "Neue Bewerbung eingegangen – NextTech RecruitAI",
+        `
+          <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #1f2937;">
+            <h2 style="color: #0f766e;">
+              Neue Bewerbung eingegangen
+            </h2>
 
-  await sendEmail(
-    companyEmail,
-    "Neue Bewerbung eingegangen",
-    `
-      <h1>Neue Bewerbung</h1>
-      <p>Für die Stelle <strong>${application.job.title}</strong> ist eine neue Bewerbung eingegangen.</p>
-      <p><strong>Bewerber:</strong> ${candidate.user.name || "-"}</p>
-      <p><strong>E-Mail:</strong> ${candidate.user.email}</p>
-      <p><strong>Beruf:</strong> ${candidate.profession || "-"}</p>
-      <p><strong>Stadt:</strong> ${candidate.city || "-"}</p>
-      <p>Bitte im Unternehmens-Dashboard prüfen.</p>
-    `
-  );
+            <p>
+              Für die Stelle
+              <strong>${escapeHtml(application.job.title)}</strong>
+              ist eine neue Bewerbung eingegangen.
+            </p>
 
-  return NextResponse.redirect(
-    new URL("/candidate/applications", req.url),
-    303
-  );
+            <p>
+              <strong>Bewerber:</strong>
+              ${escapeHtml(candidate.user.name) || "-"}
+            </p>
+
+            <p>
+              <strong>E-Mail:</strong>
+              ${escapeHtml(candidate.user.email)}
+            </p>
+
+            <p>
+              <strong>Beruf:</strong>
+              ${escapeHtml(candidate.profession) || "-"}
+            </p>
+
+            <p>
+              <strong>Stadt:</strong>
+              ${escapeHtml(candidate.city) || "-"}
+            </p>
+
+            <p>
+              Bitte prüfen Sie die Bewerbung in Ihrem
+              Unternehmens-Dashboard.
+            </p>
+
+            <p>
+              Viele Grüße<br />
+              <strong>NextTech RecruitAI</strong>
+            </p>
+          </div>
+        `
+      );
+    } catch (mailError) {
+      console.warn(
+        "Bewerbung wurde gespeichert, aber die Benachrichtigungs-E-Mail konnte nicht gesendet werden:",
+        mailError
+      );
+    }
+
+    return NextResponse.redirect(
+      new URL(
+        "/candidate/applications?submitted=1",
+        req.url
+      ),
+      303
+    );
+  } catch (error) {
+    console.error(
+      "Bewerbung konnte nicht erstellt werden:",
+      error
+    );
+
+    return NextResponse.json(
+      { error: "Die Bewerbung konnte nicht gesendet werden." },
+      { status: 500 }
+    );
+  }
 }

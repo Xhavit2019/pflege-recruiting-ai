@@ -1,28 +1,46 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import { sendEmail } from "@/lib/mail";
 
-const allowedStatuses = ["pending", "reviewed", "accepted", "rejected"] as const;
+import { sendEmail } from "@/lib/mail";
+import { prisma } from "@/lib/prisma";
+
+const allowedStatuses = [
+  "pending",
+  "reviewed",
+  "accepted",
+  "rejected",
+] as const;
 
 type ApplicationStatus = (typeof allowedStatuses)[number];
 
 export async function POST(req: Request) {
   try {
     const cookieStore = await cookies();
+
     const userId = cookieStore.get("userId")?.value;
     const role = cookieStore.get("role")?.value;
 
     if (!userId) {
-      return NextResponse.json({ error: "Nicht eingeloggt." }, { status: 401 });
+      return NextResponse.json(
+        { error: "Nicht eingeloggt." },
+        { status: 401 }
+      );
     }
 
     const formData = await req.formData();
 
-    const applicationId = formData.get("applicationId")?.toString();
-    const status = formData.get("status")?.toString() as ApplicationStatus;
+    const applicationId = formData
+      .get("applicationId")
+      ?.toString();
 
-    if (!applicationId || !allowedStatuses.includes(status)) {
+    const status = formData
+      .get("status")
+      ?.toString() as ApplicationStatus;
+
+    if (
+      !applicationId ||
+      !allowedStatuses.includes(status)
+    ) {
       return NextResponse.json(
         { error: "Ungültige Anfrage." },
         { status: 400 }
@@ -30,16 +48,13 @@ export async function POST(req: Request) {
     }
 
     const application = await prisma.application.findUnique({
-      where: { id: applicationId },
+      where: {
+        id: applicationId,
+      },
       include: {
-        candidate: {
-          include: {
-            user: true,
-          },
-        },
         job: {
-          include: {
-            company: true,
+          select: {
+            companyId: true,
           },
         },
       },
@@ -57,9 +72,15 @@ export async function POST(req: Request) {
         where: {
           userId,
         },
+        select: {
+          id: true,
+        },
       });
 
-      if (!company || application.job.companyId !== company.id) {
+      if (
+        !company ||
+        application.job.companyId !== company.id
+      ) {
         return NextResponse.json(
           { error: "Kein Zugriff auf diese Bewerbung." },
           { status: 403 }
@@ -72,22 +93,27 @@ export async function POST(req: Request) {
       );
     }
 
-    const updatedApplication = await prisma.application.update({
-      where: { id: applicationId },
-      data: { status },
-      include: {
-        candidate: {
-          include: {
-            user: true,
+    const updatedApplication =
+      await prisma.application.update({
+        where: {
+          id: applicationId,
+        },
+        data: {
+          status,
+        },
+        include: {
+          candidate: {
+            include: {
+              user: true,
+            },
+          },
+          job: {
+            include: {
+              company: true,
+            },
           },
         },
-        job: {
-          include: {
-            company: true,
-          },
-        },
-      },
-    });
+      });
 
     const statusText =
       status === "reviewed"
@@ -98,27 +124,74 @@ export async function POST(req: Request) {
             ? "abgelehnt"
             : "offen";
 
-    await sendEmail(
-      updatedApplication.candidate.user.email,
-      `Status deiner Bewerbung: ${statusText}`,
-      `
-        <h1>Status deiner Bewerbung</h1>
-        <p>Hallo ${updatedApplication.candidate.user.name || ""},</p>
-        <p>deine Bewerbung für die Stelle <strong>${updatedApplication.job.title}</strong> bei <strong>${updatedApplication.job.company.companyName}</strong> wurde aktualisiert.</p>
-        <p><strong>Neuer Status:</strong> ${statusText}</p>
-        <p>Viele Grüße<br/>NextTech RecruitAI</p>
-      `
-    );
+    /*
+     * Die Statusänderung wurde bereits erfolgreich gespeichert.
+     * Ein Fehler beim E-Mail-Versand darf deshalb nicht den
+     * gesamten Vorgang mit einem 500-Fehler abbrechen.
+     */
+    try {
+      await sendEmail(
+        updatedApplication.candidate.user.email,
+        `Status Ihrer Bewerbung: ${statusText}`,
+        `
+          <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #1f2937;">
+            <h2 style="color: #0f766e;">
+              Status Ihrer Bewerbung
+            </h2>
+
+            <p>
+              Hallo${
+                updatedApplication.candidate.user.name
+                  ? ` ${updatedApplication.candidate.user.name}`
+                  : ""
+              },
+            </p>
+
+            <p>
+              Ihre Bewerbung für die Stelle
+              <strong>${updatedApplication.job.title}</strong>
+              bei
+              <strong>${updatedApplication.job.company.companyName}</strong>
+              wurde aktualisiert.
+            </p>
+
+            <p>
+              <strong>Neuer Status:</strong> ${statusText}
+            </p>
+
+            <p>
+              Viele Grüße<br />
+              <strong>NextTech RecruitAI</strong>
+            </p>
+          </div>
+        `
+      );
+    } catch (mailError) {
+      console.warn(
+        "Status wurde gespeichert, aber die Benachrichtigungs-E-Mail konnte nicht gesendet werden:",
+        mailError
+      );
+    }
+
+    const redirectPath =
+      role === "admin"
+        ? "/admin/applications?statusUpdated=1"
+        : "/company/applications?statusUpdated=1";
 
     return NextResponse.redirect(
-      new URL("/company/applications?statusUpdated=1", req.url),
+      new URL(redirectPath, req.url),
       303
     );
   } catch (error) {
-    console.error(error);
+    console.error(
+      "Bewerbungsstatus konnte nicht aktualisiert werden:",
+      error
+    );
 
     return NextResponse.json(
-      { error: "Status konnte nicht aktualisiert werden." },
+      {
+        error: "Status konnte nicht aktualisiert werden.",
+      },
       { status: 500 }
     );
   }
