@@ -1,30 +1,35 @@
-import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+
+import { getCurrentUser } from "@/lib/auth/current-user";
 import { prisma } from "@/lib/prisma";
 
 export async function POST(req: Request) {
   try {
-    const cookieStore = await cookies();
+    const currentUser = await getCurrentUser();
 
-    const currentUserId = cookieStore.get("userId")?.value;
-    const currentRole = cookieStore.get("role")?.value;
-
-    if (!currentUserId) {
+    if (!currentUser) {
       return NextResponse.json(
         { error: "Nicht eingeloggt." },
         { status: 401 }
       );
     }
 
-    if (currentRole !== "admin") {
+    if (currentUser.role !== "admin") {
       return NextResponse.json(
-        { error: "Nur Administratoren dürfen Bewerbungen löschen." },
+        {
+          error:
+            "Nur Administratoren dürfen Bewerbungen löschen.",
+        },
         { status: 403 }
       );
     }
 
     const formData = await req.formData();
-    const applicationId = formData.get("applicationId")?.toString();
+
+    const applicationId = formData
+      .get("applicationId")
+      ?.toString()
+      .trim();
 
     if (!applicationId) {
       return NextResponse.json(
@@ -33,34 +38,34 @@ export async function POST(req: Request) {
       );
     }
 
-    const application = await prisma.application.findUnique({
+    const deleteResult = await prisma.application.deleteMany({
       where: {
         id: applicationId,
       },
     });
 
-    if (!application) {
+    if (deleteResult.count === 0) {
       return NextResponse.json(
-        { error: "Bewerbung nicht gefunden." },
+        { error: "Bewerbung wurde nicht gefunden." },
         { status: 404 }
       );
     }
-
-    await prisma.application.delete({
-      where: {
-        id: applicationId,
-      },
-    });
 
     return NextResponse.redirect(
       new URL("/admin/applications?deleted=1", req.url),
       303
     );
   } catch (error) {
-    console.error(error);
+    console.error(
+      "Bewerbung konnte nicht gelöscht werden:",
+      error
+    );
 
     return NextResponse.json(
-      { error: "Bewerbung konnte nicht gelöscht werden." },
+      {
+        error:
+          "Die Bewerbung konnte nicht gelöscht werden.",
+      },
       { status: 500 }
     );
   }
