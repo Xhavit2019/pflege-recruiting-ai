@@ -1,12 +1,13 @@
 import Link from "next/link";
+
 import AppNav from "@/components/AppNav";
 import PageHeader from "@/components/layout/PageHeader";
-import Card from "@/components/ui/Card";
-import Button from "@/components/ui/Button";
 import Badge from "@/components/ui/Badge";
+import Button from "@/components/ui/Button";
+import Card from "@/components/ui/Card";
 import EmptyState from "@/components/ui/EmptyState";
-import { prisma } from "@/lib/prisma";
 import { requireCompany } from "@/lib/auth/require-company";
+import { prisma } from "@/lib/prisma";
 
 export default async function Page() {
   const company = await requireCompany();
@@ -31,7 +32,11 @@ export default async function Page() {
       <PageHeader
         title="Meine Stellenanzeigen"
         subtitle="Verwalten Sie Ihre veröffentlichten Stellen und eingegangenen Bewerbungen."
-        actions={<Button href="/company/jobs/new">Neue Stelle erstellen</Button>}
+        actions={
+          <Button href="/company/jobs/new">
+            Neue Stelle erstellen
+          </Button>
+        }
       />
 
       {jobs.length === 0 ? (
@@ -52,39 +57,58 @@ export default async function Page() {
                       {job.title}
                     </h2>
 
-                    <Badge variant={job.isActive ? "success" : "default"}>
-                      {job.isActive ? "Aktiv" : "Inaktiv"}
+                    <Badge
+                      variant={
+                        job.isActive
+                          ? "success"
+                          : "default"
+                      }
+                    >
+                      {job.isActive
+                        ? "Aktiv"
+                        : "Inaktiv"}
                     </Badge>
                   </div>
 
                   <p className="mt-2 text-sm text-slate-600">
-                    {job.company.companyName} · {job.city} · {job.employmentType}
+                    {job.company.companyName} ·{" "}
+                    {job.city} ·{" "}
+                    {job.employmentType}
                   </p>
 
                   <p className="mt-3 text-sm text-slate-700">
                     {job.description}
                   </p>
 
-                  <div className="mt-4 flex flex-wrap gap-2">
-                    {job.requiredSkills.map((skill) => (
-                      <span
-                        key={skill}
-                        className="rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-700"
-                      >
-                        {skill}
-                      </span>
-                    ))}
-                  </div>
+                  {job.requiredSkills.length > 0 && (
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      {job.requiredSkills.map(
+                        (skill, index) => (
+                          <span
+                            key={`${job.id}-${index}-${skill}`}
+                            className="rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-700"
+                          >
+                            {skill}
+                          </span>
+                        )
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 <div className="min-w-40 text-sm text-slate-600">
                   <p>
-                    <strong>{job.applications.length}</strong> Bewerbungen
+                    <strong>
+                      {job.applications.length}
+                    </strong>{" "}
+                    Bewerbungen
                   </p>
 
-                  {(job.salaryFrom || job.salaryTo) && (
+                  {(job.salaryFrom !== null ||
+                    job.salaryTo !== null) && (
                     <p className="mt-1">
-                      {job.salaryFrom ?? "-"} € – {job.salaryTo ?? "-"} €
+                      {job.salaryFrom ?? "-"} € –{" "}
+                      {job.salaryTo ?? "-"} €
                     </p>
                   )}
 

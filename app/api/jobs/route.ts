@@ -1,57 +1,144 @@
-import { PrismaClient } from "@prisma/client";
 import { NextResponse } from "next/server";
 
-const prisma = new PrismaClient();
+import { requireCompany } from "@/lib/auth/require-company";
+import { prisma } from "@/lib/prisma";
+
+function parseOptionalSalary(
+  value: FormDataEntryValue | null
+) {
+  const text = value?.toString().trim();
+
+  if (!text) {
+    return null;
+  }
+
+  const salary = Number(text);
+
+  if (!Number.isFinite(salary) || salary < 0) {
+    return undefined;
+  }
+
+  return salary;
+}
 
 export async function POST(req: Request) {
-  const formData = await req.formData();
+  const company = await requireCompany();
 
-  const title = formData.get("title") as string;
-  const city = formData.get("city") as string;
-  const employmentType = formData.get("employmentType") as string;
-  const description = formData.get("description") as string;
-  const salaryFrom = formData.get("salaryFrom") as string;
-  const salaryTo = formData.get("salaryTo") as string;
-  const requiredSkills = formData.get("requiredSkills") as string;
+  try {
+    const formData = await req.formData();
 
-  let company = await prisma.company.findFirst();
+    const title = formData
+      .get("title")
+      ?.toString()
+      .trim();
 
-  if (!company) {
-    const user = await prisma.user.findFirst({
-      where: { role: "company" },
-    });
+    const city = formData
+      .get("city")
+      ?.toString()
+      .trim();
 
-    if (!user) {
+    const employmentType = formData
+      .get("employmentType")
+      ?.toString()
+      .trim();
+
+    const description = formData
+      .get("description")
+      ?.toString()
+      .trim();
+
+    if (
+      !title ||
+      !city ||
+      !employmentType ||
+      !description
+    ) {
       return NextResponse.json(
-        { error: "Bitte zuerst ein Unternehmen registrieren." },
+        {
+          error:
+            "Titel, Ort, Beschäftigungsart und Beschreibung sind erforderlich.",
+        },
         { status: 400 }
       );
     }
 
-    company = await prisma.company.create({
+    const salaryFrom = parseOptionalSalary(
+      formData.get("salaryFrom")
+    );
+
+    const salaryTo = parseOptionalSalary(
+      formData.get("salaryTo")
+    );
+
+    if (
+      salaryFrom === undefined ||
+      salaryTo === undefined
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Das Gehalt muss eine gültige positive Zahl sein.",
+        },
+        { status: 400 }
+      );
+    }
+
+    if (
+      salaryFrom !== null &&
+      salaryTo !== null &&
+      salaryFrom > salaryTo
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Das Mindestgehalt darf nicht höher als das Maximalgehalt sein.",
+        },
+        { status: 400 }
+      );
+    }
+
+    const requiredSkillsValue = formData
+      .get("requiredSkills")
+      ?.toString();
+
+    const requiredSkills = Array.from(
+      new Set(
+        (requiredSkillsValue ?? "")
+          .split(",")
+          .map((skill) => skill.trim())
+          .filter(Boolean)
+      )
+    );
+
+    await prisma.job.create({
       data: {
-        userId: user.id,
-        companyName: user.name || "Pflegeunternehmen",
+        companyId: company.id,
+        title,
         city,
-        isVerified: true,
+        employmentType,
+        description,
+        salaryFrom,
+        salaryTo,
+        requiredSkills,
       },
     });
+
+    return NextResponse.redirect(
+      new URL("/company/jobs?created=1", req.url),
+      303
+    );
+  } catch (error) {
+    console.error(
+      "Stellenanzeige konnte nicht erstellt werden:",
+      error
+    );
+
+    return NextResponse.json(
+      {
+        error:
+          "Die Stellenanzeige konnte nicht erstellt werden.",
+      },
+      { status: 500 }
+    );
   }
-
-  await prisma.job.create({
-    data: {
-      companyId: company.id,
-      title,
-      city,
-      employmentType,
-      description,
-      salaryFrom: salaryFrom ? Number(salaryFrom) : null,
-      salaryTo: salaryTo ? Number(salaryTo) : null,
-      requiredSkills: requiredSkills
-        ? requiredSkills.split(",").map((s) => s.trim())
-        : [],
-    },
-  });
-
-  return NextResponse.redirect(new URL("/jobs", req.url));
 }
