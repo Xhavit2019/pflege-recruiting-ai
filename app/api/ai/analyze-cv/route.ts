@@ -1,17 +1,21 @@
-import { PrismaClient } from "@prisma/client";
 import { NextResponse } from "next/server";
 import OpenAI from "openai";
 
-const prisma = new PrismaClient();
+import { requireCandidate } from "@/lib/auth/require-candidate";
+import { prisma } from "@/lib/prisma";
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+const demoSkills = [
+  "Pflege",
+  "Patientenbetreuung",
+  "Kommunikation",
+  "Teamarbeit",
+  "Dokumentation",
+];
 
 export async function POST(req: Request) {
-  const profile = await prisma.candidateProfile.findFirst();
+  const candidate = await requireCandidate();
 
-  if (!profile || !profile.cvUrl) {
+  if (!candidate.cvUrl) {
     return NextResponse.json(
       { error: "Kein Lebenslauf gefunden." },
       { status: 400 }
@@ -19,34 +23,55 @@ export async function POST(req: Request) {
   }
 
   try {
+    const apiKey = process.env.OPENAI_API_KEY;
+
+    if (!apiKey) {
+      await prisma.candidateProfile.update({
+        where: {
+          id: candidate.id,
+        },
+        data: {
+          summary:
+            "Demo-Auswertung: Erfahrung in Pflege, Patientenbetreuung, Kommunikation, Teamarbeit und Dokumentation erkannt. Die echte KI-Analyse wird aktiviert, sobald der OpenAI-Zugang vollständig eingerichtet ist.",
+          skills: demoSkills,
+        },
+      });
+
+      return NextResponse.redirect(
+        new URL("/candidate/profile?demoAi=1", req.url),
+        303
+      );
+    }
+
+    const openai = new OpenAI({
+      apiKey,
+    });
+
     const response = await openai.responses.create({
       model: "gpt-4.1-mini",
       input: `
-Analysiere diesen Bewerber für eine Pflege-Recruiting-Plattform.
+Analysiere das Profil dieses Bewerbers für eine Pflege-Recruiting-Plattform.
 
-Aktuelle Profil-Daten:
-Beruf: ${profile.profession || "-"}
-Stadt: ${profile.city || "-"}
-Erfahrung: ${profile.yearsOfExperience || 0} Jahre
-Skills: ${profile.skills.join(", ") || "-"}
+Beruf: ${candidate.profession || "-"}
+Stadt: ${candidate.city || "-"}
+Erfahrung: ${candidate.yearsOfExperience || 0} Jahre
+Vorhandene Skills: ${candidate.skills.join(", ") || "-"}
 
-Gib eine kurze professionelle Zusammenfassung und 5 relevante Skills zurück.
+Erstelle eine kurze professionelle Zusammenfassung und nenne fünf relevante Kompetenzen.
 `,
     });
 
-    const text = response.output_text || "";
+    const summary = response.output_text?.trim();
 
     await prisma.candidateProfile.update({
-      where: { id: profile.id },
+      where: {
+        id: candidate.id,
+      },
       data: {
-        summary: text,
-        skills: [
-          "Pflege",
-          "Patientenbetreuung",
-          "Kommunikation",
-          "Teamarbeit",
-          "Dokumentation",
-        ],
+        summary:
+          summary ||
+          "Die KI konnte keine Zusammenfassung erstellen.",
+        skills: demoSkills,
       },
     });
 
@@ -55,20 +80,19 @@ Gib eine kurze professionelle Zusammenfassung und 5 relevante Skills zurück.
       303
     );
   } catch (error) {
-    console.error("OpenAI Fehler, Demo-Auswertung wird verwendet:", error);
+    console.error(
+      "OpenAI-Analyse fehlgeschlagen, Demo-Auswertung wird verwendet:",
+      error
+    );
 
     await prisma.candidateProfile.update({
-      where: { id: profile.id },
+      where: {
+        id: candidate.id,
+      },
       data: {
         summary:
-          "Demo-Auswertung (muss AI KEY bezahlen damit funktioniert): Erfahrung in Pflege, Patientenbetreuung, Kommunikation, Teamarbeit und Dokumentation erkannt. Diese Demo wird angezeigt, weil OpenAI-Billing oder API-Guthaben aktuell nicht verfügbar ist.",
-        skills: [
-          "Pflege",
-          "Patientenbetreuung",
-          "Kommunikation",
-          "Teamarbeit",
-          "Dokumentation",
-        ],
+          "Demo-Auswertung: Erfahrung in Pflege, Patientenbetreuung, Kommunikation, Teamarbeit und Dokumentation erkannt. Die echte KI-Analyse war momentan nicht verfügbar.",
+        skills: demoSkills,
       },
     });
 

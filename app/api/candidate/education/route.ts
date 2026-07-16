@@ -1,60 +1,91 @@
-import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+
+import { requireCandidate } from "@/lib/auth/require-candidate";
 import { EducationService } from "@/services/education.service";
 
+function toNullableString(value: FormDataEntryValue | null) {
+  const text = value?.toString().trim();
+
+  return text || null;
+}
+
+function toNullableDate(value: FormDataEntryValue | null) {
+  const text = value?.toString().trim();
+
+  if (!text) {
+    return null;
+  }
+
+  const date = new Date(text);
+
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
 export async function POST(req: Request) {
+  // Außerhalb von try/catch, damit der Login-Redirect
+  // nicht versehentlich als Serverfehler behandelt wird.
+  const candidate = await requireCandidate();
+
   try {
-    const cookieStore = await cookies();
-    const userId = cookieStore.get("userId")?.value;
-
-    if (!userId) {
-      return NextResponse.json(
-        { error: "Nicht eingeloggt." },
-        { status: 401 }
-      );
-    }
-
-    const profile = await prisma.candidateProfile.findUnique({
-      where: { userId },
-    });
-
-    if (!profile) {
-      return NextResponse.json(
-        { error: "Bewerberprofil nicht gefunden." },
-        { status: 404 }
-      );
-    }
-
     const formData = await req.formData();
 
+    const degree = formData
+      .get("degree")
+      ?.toString()
+      .trim();
+
+    const institution = formData
+      .get("institution")
+      ?.toString()
+      .trim();
+
+    if (!degree || !institution) {
+      return NextResponse.json(
+        {
+          error:
+            "Abschluss und Bildungseinrichtung sind erforderlich.",
+        },
+        { status: 400 }
+      );
+    }
+
+    const currentlyStudying =
+      formData.get("currentlyStudying") === "on";
+
     await EducationService.createEducation({
-      candidateProfileId: profile.id,
-      degree: formData.get("degree")?.toString() ?? "",
-      institution: formData.get("institution")?.toString() ?? "",
-      fieldOfStudy: formData.get("fieldOfStudy")?.toString() || null,
-      city: formData.get("city")?.toString() || null,
-      country: formData.get("country")?.toString() || null,
-      startDate: formData.get("startDate")
-        ? new Date(formData.get("startDate")!.toString())
-        : null,
-      endDate: formData.get("endDate")
-        ? new Date(formData.get("endDate")!.toString())
-        : null,
-      currentlyStudying:
-        formData.get("currentlyStudying") === "on",
-      description: formData.get("description")?.toString() || null,
+      candidateProfileId: candidate.id,
+      degree,
+      institution,
+      fieldOfStudy: toNullableString(
+        formData.get("fieldOfStudy")
+      ),
+      city: toNullableString(formData.get("city")),
+      country: toNullableString(formData.get("country")),
+      startDate: toNullableDate(formData.get("startDate")),
+      endDate: currentlyStudying
+        ? null
+        : toNullableDate(formData.get("endDate")),
+      currentlyStudying,
+      description: toNullableString(
+        formData.get("description")
+      ),
     });
 
     return NextResponse.redirect(
-      new URL("/candidate/profile", req.url),
+      new URL("/candidate/profile?educationSaved=1", req.url),
       303
     );
   } catch (error) {
-    console.error(error);
+    console.error(
+      "Ausbildung konnte nicht gespeichert werden:",
+      error
+    );
 
     return NextResponse.json(
-      { error: "Ausbildung konnte nicht gespeichert werden." },
+      {
+        error:
+          "Die Ausbildung konnte nicht gespeichert werden.",
+      },
       { status: 500 }
     );
   }

@@ -1,51 +1,65 @@
-import { cookies } from "next/headers";
-import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import { LanguageService } from "@/services/language.service";
 import { LanguageLevel } from "@prisma/client";
+import { NextResponse } from "next/server";
+
+import { requireCandidate } from "@/lib/auth/require-candidate";
+import { LanguageService } from "@/services/language.service";
 
 export async function POST(req: Request) {
+  const candidate = await requireCandidate();
+
   try {
-    const cookieStore = await cookies();
-    const userId = cookieStore.get("userId")?.value;
-
-    if (!userId) {
-      return NextResponse.json(
-        { error: "Nicht eingeloggt." },
-        { status: 401 }
-      );
-    }
-
-    const profile = await prisma.candidateProfile.findUnique({
-      where: {
-        userId,
-      },
-    });
-
-    if (!profile) {
-      return NextResponse.json(
-        { error: "Bewerberprofil nicht gefunden." },
-        { status: 404 }
-      );
-    }
-
     const formData = await req.formData();
 
+    const language = formData
+      .get("language")
+      ?.toString()
+      .trim();
+
+    const levelValue = formData
+      .get("level")
+      ?.toString()
+      .trim();
+
+    const validLevel =
+      levelValue &&
+      Object.values(LanguageLevel).includes(
+        levelValue as LanguageLevel
+      );
+
+    if (!language || !validLevel) {
+      return NextResponse.json(
+        {
+          error:
+            "Sprache und ein gültiges Sprachniveau sind erforderlich.",
+        },
+        { status: 400 }
+      );
+    }
+
     await LanguageService.createLanguage({
-      candidateProfileId: profile.id,
-      language: formData.get("language")?.toString() ?? "",
-      level: formData.get("level") as LanguageLevel,
+      candidateProfileId: candidate.id,
+      language,
+      level: levelValue as LanguageLevel,
     });
 
     return NextResponse.redirect(
-      new URL("/candidate/profile", req.url),
+      new URL(
+        "/candidate/profile?languageSaved=1",
+        req.url
+      ),
       303
     );
   } catch (error) {
-    console.error(error);
+    console.error(
+      "Sprache konnte nicht gespeichert werden:",
+      error
+    );
 
     return NextResponse.json(
-      { error: "Sprache konnte nicht gespeichert werden." },
+      {
+        error:
+          "Die Sprache konnte nicht gespeichert werden.",
+      },
       { status: 500 }
     );
   }

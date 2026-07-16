@@ -1,11 +1,12 @@
 import AppNav from "@/components/AppNav";
 import PageHeader from "@/components/layout/PageHeader";
-import Card from "@/components/ui/Card";
 import { requireCandidate } from "@/lib/auth/require-candidate";
-import ProfileImageCard from "@/components/candidate/profile/ProfileImageCard";
-import AiSummaryCard from "@/components/candidate/profile/AiSummaryCard";
+
 import CandidateProfileForm from "@/components/candidate/profile/CandidateProfileForm";
+import ProfileImageCard from "@/components/candidate/profile/ProfileImageCard";
 import CvUploadCard from "@/components/candidate/profile/CvUploadCard";
+import AiSummaryCard from "@/components/candidate/profile/AiSummaryCard";
+
 import EducationCard from "@/components/candidate/education/EducationCard";
 import WorkExperienceCard from "@/components/candidate/work/WorkExperienceCard";
 import CertificateCard from "@/components/candidate/certificates/CertificateCard";
@@ -22,7 +23,6 @@ export default async function Page({
   }>;
 }) {
   const profile = await requireCandidate();
-
   const params = await searchParams;
 
   return (
@@ -31,21 +31,21 @@ export default async function Page({
 
       <PageHeader
         title="Mein Bewerberprofil"
-        subtitle="Pflegen Sie Ihre beruflichen Daten, Sprache, Mobilität und Verfügbarkeit."
+        subtitle="Pflegen Sie Ihre persönlichen und beruflichen Daten."
       />
 
-      <ProfileImageCard profileImageUrl={profile.profileImageUrl} />
+      <CandidateProfileForm profile={profile} />
+
+      <ProfileImageCard
+        profileImageUrl={profile.profileImageUrl}
+      />
+
+      <CvUploadCard cvUrl={profile.cvUrl} />
 
       <AiSummaryCard
         summary={profile.summary}
         skills={profile.skills}
       />
-
-      <CvUploadCard
-        cvUrl={profile.cvUrl}
-      />
-
-      <CandidateProfileForm profile={profile} />
 
       <EducationCard
         educations={profile.educations}

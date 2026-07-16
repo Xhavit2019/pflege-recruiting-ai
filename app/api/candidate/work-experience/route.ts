@@ -1,52 +1,88 @@
-import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+
+import { requireCandidate } from "@/lib/auth/require-candidate";
 import { WorkExperienceService } from "@/services/work-experience.service";
 
+function toNullableString(value: FormDataEntryValue | null) {
+  const text = value?.toString().trim();
+
+  return text || null;
+}
+
+function toNullableDate(value: FormDataEntryValue | null) {
+  const text = value?.toString().trim();
+
+  if (!text) {
+    return null;
+  }
+
+  const date = new Date(text);
+
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
 export async function POST(req: Request) {
+  const candidate = await requireCandidate();
+
   try {
-    const cookieStore = await cookies();
-    const userId = cookieStore.get("userId")?.value;
+    const formData = await req.formData();
 
-    if (!userId) {
-      return NextResponse.json({ error: "Nicht eingeloggt." }, { status: 401 });
-    }
+    const company = formData
+      .get("company")
+      ?.toString()
+      .trim();
 
-    const profile = await prisma.candidateProfile.findUnique({
-      where: { userId },
-    });
+    const position = formData
+      .get("position")
+      ?.toString()
+      .trim();
 
-    if (!profile) {
+    if (!company || !position) {
       return NextResponse.json(
-        { error: "Bewerberprofil nicht gefunden." },
-        { status: 404 }
+        {
+          error: "Unternehmen und Position sind erforderlich.",
+        },
+        { status: 400 }
       );
     }
 
-    const formData = await req.formData();
+    const currentlyWorking =
+      formData.get("currentlyWorking") === "on";
 
     await WorkExperienceService.createWorkExperience({
-      candidateProfileId: profile.id,
-      company: formData.get("company")?.toString() ?? "",
-      position: formData.get("position")?.toString() ?? "",
-      city: formData.get("city")?.toString() || null,
-      country: formData.get("country")?.toString() || null,
-      startDate: formData.get("startDate")
-        ? new Date(formData.get("startDate")!.toString())
-        : null,
-      endDate: formData.get("endDate")
-        ? new Date(formData.get("endDate")!.toString())
-        : null,
-      currentlyWorking: formData.get("currentlyWorking") === "on",
-      description: formData.get("description")?.toString() || null,
+      candidateProfileId: candidate.id,
+      company,
+      position,
+      city: toNullableString(formData.get("city")),
+      country: toNullableString(formData.get("country")),
+      startDate: toNullableDate(formData.get("startDate")),
+      endDate: currentlyWorking
+        ? null
+        : toNullableDate(formData.get("endDate")),
+      currentlyWorking,
+      description: toNullableString(
+        formData.get("description")
+      ),
     });
 
-    return NextResponse.redirect(new URL("/candidate/profile", req.url), 303);
+    return NextResponse.redirect(
+      new URL(
+        "/candidate/profile?workExperienceSaved=1",
+        req.url
+      ),
+      303
+    );
   } catch (error) {
-    console.error(error);
+    console.error(
+      "Berufserfahrung konnte nicht gespeichert werden:",
+      error
+    );
 
     return NextResponse.json(
-      { error: "Berufserfahrung konnte nicht gespeichert werden." },
+      {
+        error:
+          "Die Berufserfahrung konnte nicht gespeichert werden.",
+      },
       { status: 500 }
     );
   }

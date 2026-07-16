@@ -1,60 +1,84 @@
-import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+
+import { requireCandidate } from "@/lib/auth/require-candidate";
 import { CertificateService } from "@/services/certificate.service";
 
+function toNullableString(value: FormDataEntryValue | null) {
+  const text = value?.toString().trim();
+
+  return text || null;
+}
+
+function toNullableDate(value: FormDataEntryValue | null) {
+  const text = value?.toString().trim();
+
+  if (!text) {
+    return null;
+  }
+
+  const date = new Date(text);
+
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
 export async function POST(req: Request) {
+  const candidate = await requireCandidate();
+
   try {
-    const cookieStore = await cookies();
-    const userId = cookieStore.get("userId")?.value;
-
-    if (!userId) {
-      return NextResponse.json(
-        { error: "Nicht eingeloggt." },
-        { status: 401 }
-      );
-    }
-
-    const profile = await prisma.candidateProfile.findUnique({
-      where: {
-        userId,
-      },
-    });
-
-    if (!profile) {
-      return NextResponse.json(
-        { error: "Bewerberprofil nicht gefunden." },
-        { status: 404 }
-      );
-    }
-
     const formData = await req.formData();
 
+    const title = formData
+      .get("title")
+      ?.toString()
+      .trim();
+
+    const issuer = formData
+      .get("issuer")
+      ?.toString()
+      .trim();
+
+    if (!title || !issuer) {
+      return NextResponse.json(
+        {
+          error:
+            "Zertifikatsname und Aussteller sind erforderlich.",
+        },
+        { status: 400 }
+      );
+    }
+
     await CertificateService.createCertificate({
-      candidateProfileId: profile.id,
-      title: formData.get("title")?.toString() ?? "",
-      issuer: formData.get("issuer")?.toString() ?? "",
-      issueDate: formData.get("issueDate")
-        ? new Date(formData.get("issueDate")!.toString())
-        : null,
-      expiryDate: formData.get("expiryDate")
-        ? new Date(formData.get("expiryDate")!.toString())
-        : null,
-      certificateNumber:
-        formData.get("certificateNumber")?.toString() || null,
-      description:
-        formData.get("description")?.toString() || null,
+      candidateProfileId: candidate.id,
+      title,
+      issuer,
+      issueDate: toNullableDate(formData.get("issueDate")),
+      expiryDate: toNullableDate(formData.get("expiryDate")),
+      certificateNumber: toNullableString(
+        formData.get("certificateNumber")
+      ),
+      description: toNullableString(
+        formData.get("description")
+      ),
     });
 
     return NextResponse.redirect(
-      new URL("/candidate/profile", req.url),
+      new URL(
+        "/candidate/profile?certificateSaved=1",
+        req.url
+      ),
       303
     );
   } catch (error) {
-    console.error(error);
+    console.error(
+      "Zertifikat konnte nicht gespeichert werden:",
+      error
+    );
 
     return NextResponse.json(
-      { error: "Zertifikat konnte nicht gespeichert werden." },
+      {
+        error:
+          "Das Zertifikat konnte nicht gespeichert werden.",
+      },
       { status: 500 }
     );
   }
