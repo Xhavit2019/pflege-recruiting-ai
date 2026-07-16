@@ -1,18 +1,18 @@
-import { cookies } from "next/headers";
+import { getServerSession } from "next-auth";
+
+import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 export async function getCurrentUser() {
-  const cookieStore = await cookies();
+  const session = await getServerSession(authOptions);
 
-  const userId = cookieStore.get("userId")?.value;
-
-  if (!userId) {
+  if (!session?.user?.id) {
     return null;
   }
 
   return prisma.user.findUnique({
     where: {
-      id: userId,
+      id: session.user.id,
     },
   });
 }

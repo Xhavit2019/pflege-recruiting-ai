@@ -1,7 +1,6 @@
-import Card from "@/components/ui/Card";
-import Input from "@/components/ui/Input";
-import Button from "@/components/ui/Button";
+import LoginForm from "@/components/auth/LoginForm";
 import PageHeader from "@/components/layout/PageHeader";
+import Card from "@/components/ui/Card";
 
 type PageProps = {
   searchParams: Promise<{
@@ -52,32 +51,7 @@ export default async function Page({ searchParams }: PageProps) {
           </div>
         )}
 
-        <form method="POST" action="/api/login" className="space-y-4">
-          <Input
-            name="email"
-            type="email"
-            placeholder="E-Mail"
-            required
-          />
-
-          <Input
-            name="password"
-            type="password"
-            placeholder="Passwort"
-            required
-          />
-
-          <div className="text-right text-sm">
-            <a
-              href="/forgot-password"
-              className="text-teal-600 hover:text-teal-700 hover:underline"
-            >
-              Passwort vergessen?
-            </a>
-          </div>
-
-          <Button type="submit">Einloggen</Button>
-        </form>
+        <LoginForm />
       </Card>
     </div>
   );
